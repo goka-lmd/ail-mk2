@@ -2,6 +2,13 @@
 
 **License Notice:** This repository contains portions derived from [DRAIL](https://github.com/NVlabs/DRAIL?tab=readme-ov-file) under the NVIDIA Source Code License for DRAIL – **non-commercial research & evaluation use only**.
 
+**Environment Setup**
+'''
+    ./utils/setup.sh
+    ./utils/setup_mujoco.sh
+    ./utils/expert_data.sh
+'''
+
 ## Acknowledgements (Anonymous Review Version)
 
 **Code**

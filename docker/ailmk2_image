@@ -15,17 +15,17 @@ RUN apt-get update && \
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc
 
 # Set timezone
-RUN ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
+RUN ln -sf /usr/share/zoneinfo/<host_timezone> /etc/localtime
 
 # Create conda environment and install PyTorch + others
 RUN /opt/conda/bin/conda create -n $CVE python=3.9.7 -y && \
     /opt/conda/bin/conda install -n $CVE pytorch=1.13.1 torchvision=0.14.1 torchaudio=0.13.1 cudatoolkit=11.6 -c pytorch -c nvidia -y && \
     /opt/conda/envs/$CVE/bin/pip install opencv-python && \
     echo "conda activate $CVE" >> ~/.bashrc
- 
+
 ######################################################################################################################
 ## Build command．
 ##
-## $ docker build -t drail_image -f <path_to_ailmk2_image> <path_to_this_directory>
+## docker build -t ailmk2_image -f <path_to_ail-mk2>/docker/ailmk2_image <path_to_ail-mk2>/docker
 ##
 ######################################################################################################################
