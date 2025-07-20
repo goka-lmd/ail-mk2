@@ -13,8 +13,8 @@ sys.path.insert(0, "./")
 from functools import partial
 
 from rlf import run_policy
-from rlf.algos import (GAIL, PPO, BaseAlgo, BehavioralCloning, DiffPolicy, 
-                       BehavioralCloningFromObs, WAIL, PWIL, GCPC)
+from rlf.algos import (GAIL, PPO, BaseAlgo, BehavioralCloning, DiffPolicy,
+                        BehavioralCloningFromObs, WAIL, PWIL, GCPC)
 from rlf.algos.il.base_il import BaseILAlgo
 from rlf.algos.il.gaifo import GAIFO
 from rlf.algos.il.sqil import SQIL
@@ -24,8 +24,7 @@ from rlf.args import str2bool
 from rlf.policies import RandomPolicy
 from rlf.policies.action_replay_policy import ActionReplayPolicy
 from rlf.rl.loggers.base_logger import BaseLogger
-from rlf.rl.loggers.wb_logger import (WbLogger, get_wb_ray_config,
-                                      get_wb_ray_kwargs)
+from rlf.rl.loggers.wb_logger import (WbLogger, get_wb_ray_config, get_wb_ray_kwargs)
 from rlf.run_settings import RunSettings
 
 import goal_prox.envs.ball_in_cup

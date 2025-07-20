@@ -1,2 +1,7 @@
+data/
 docker/
 expert_datasets/
+lightning_logs/
+wandb/
+__pycache__/
+*.pyc
