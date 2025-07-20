@@ -1,0 +1,63 @@
+project: 'ail_mk2'
+program: ail_mk2/main.py
+method: grid
+name: Maze-ailmk2-100
+command:
+  - ${env}
+  - python3
+  - ${program}
+  - ${args}
+  - --use-proper-time-limits
+
+parameters:
+  seed:
+    value: 1
+  prefix:
+    value: mae
+  alg:
+    value: ail-mk2
+  num-mini-batch:
+    value: 32
+  entropy-coef:
+    value: 0.0001
+  action-input:
+    value: False
+  env-name:
+    value: maze2d-medium-v2
+  cuda:
+    value: True
+  traj-load-path:
+    value: ./expert_datasets/maze2d_100.pt
+  ctx_size:
+    value: 10
+  future_horizon:
+    value: 40
+  epochs:
+    value: 60
+  lr:
+    value: 1e-4
+  use_scheduler:
+    value: False
+  mask_type:
+    value: mae_rc
+  use_goal:
+    value: True
+  ar_mask_ratios:
+    value: [0, 0.2, 0.4, 0.6, 0.8]
+  rnd_mask_ratios:
+    value: [0, 0.2, 0.4, 0.6, 0.8]
+  ar_mask_ratio_weights:
+    value: [0.8, 0.05, 0.05, 0.05, 0.05]
+  n_slots:
+    value: 4
+  n_enc_layers:
+    value: 2
+  n_dec_layers:
+    value: 1
+  embed_dim:
+    value: 256
+  n_head:
+    value: 4
+  pdrop:
+    value: 0.1
+ 
