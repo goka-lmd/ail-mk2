@@ -3,6 +3,7 @@
 
 ## Installation
 **Environment Setup**
+
     ```
     ./utils/setup.sh
     ./utils/setup_mujoco.sh
@@ -12,11 +13,13 @@
 
 ## Environment Setup**
 **Trajectory representation pretraining**
+
     ```
     python -m gcpc.train --config-name=ant_000 model=trajnet exp=maze_trl
     ```
 
 **Policy Learning**
+
     ```
     ./utils/wandb.sh ./configs/ant/0.05/gcpc.yaml
     ```
