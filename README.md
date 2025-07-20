@@ -4,11 +4,10 @@
 ## Installation
 **Environment Setup**
 
-    ```
     ./utils/setup.sh
     ./utils/setup_mujoco.sh
     ./utils/expert_data.sh
-    ```
+
 
 
 ## Environment Setup**
