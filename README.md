@@ -1,12 +1,24 @@
 # ail-mk2
-
 **License Notice:** This repository contains portions derived from [DRAIL](https://github.com/NVlabs/DRAIL?tab=readme-ov-file) under the NVIDIA Source Code License for DRAIL – **non-commercial research & evaluation use only**.
 
+## Installation
 **Environment Setup**
 '''
     ./utils/setup.sh
     ./utils/setup_mujoco.sh
     ./utils/expert_data.sh
+'''
+
+
+## Environment Setup**
+**Trajectory representation pretraining**
+'''
+    python -m gcpc.train --config-name=ant_000 model=trajnet exp=maze_trl
+'''
+
+**Policy Learning**
+'''
+    ./utils/wandb.sh ./configs/ant/0.05/gcpc.yaml
 '''
 
 ## Acknowledgements (Anonymous Review Version)
