@@ -1,5 +1,5 @@
-HostD=<path_to_ailmk2> && \
-ContainerD=<path_to_ailmk2> && \
+HostD=/home/user/Documents/Projects/ail-mk2/ && \
+ContainerD=/home/user/Documents/Projects/ail-mk2/ && \
 docker run --gpus all -it \
 -v "${HostD}":"${ContainerD}" \
 -w "${ContainerD}" \
