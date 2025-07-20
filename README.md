@@ -10,7 +10,7 @@
 
 
 
-## Environment Setup**
+## Impletentations**
 **Trajectory representation pretraining**
 
     python -m gcpc.train --config-name=ant_000 model=trajnet exp=ant_trl
