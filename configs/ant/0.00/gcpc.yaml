@@ -8,7 +8,7 @@ command:
   - ${program}
   - ${args}
   - --use-proper-time-limits
-  
+
 parameters:
   prefix:
     value: gcpc

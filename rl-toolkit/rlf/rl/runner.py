@@ -95,7 +95,7 @@ class Runner:
             self.ac_tensor = utils.ac_space_to_tensor(self.policy.action_space)
 
     def _eval_policy(self, policy, total_num_steps, final, args) -> Optional[VecEnvWrapper]:
-        if args.alg == 'bc' or 'sac':
+        if args.alg == 'bc' or 'gcpc' or 'sac':
             return train_eval(
                 self.envs,
                 self.alg_env_settings,
@@ -322,7 +322,7 @@ class Runner:
         if self.args.alg == 'dpf-deep' or self.args.alg == 'dpf':
             self.updater.modules[0].prox_func.load_state_dict(self.checkpointer.get_key("prox_func"))
         else:
-            if self.args.alg != 'bc' and self.args.alg != 'sac' and self.args.alg != 'dp' and self.args.alg != 'ppo':
+            if self.args.alg != 'bc' and self.args.alg != 'gcpc' and self.args.alg != 'sac' and self.args.alg != 'dp' and self.args.alg != 'ppo':
                 self.updater.modules[0].discrim_net.load_state_dict(self.checkpointer.get_key("discrim_net"))
 
         if self.checkpointer.has_load_key("ob_rms"):

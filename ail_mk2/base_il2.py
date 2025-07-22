@@ -51,8 +51,8 @@ class BaseILAlgo2(BaseNetAlgo):
     @functools.lru_cache()
     def expert_stats(self):
         return self.orig_dataset.get_expert_stats(self.args.device)
-    
-    @staticmethod   
+
+    @staticmethod
     def pt_collate_fn(batch):
         batch_dict = {}
         past_state_lengths = []

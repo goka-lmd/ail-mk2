@@ -5,3 +5,5 @@ lightning_logs/
 wandb/
 __pycache__/
 *.pyc
+results/
+*.png

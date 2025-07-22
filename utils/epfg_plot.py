@@ -47,8 +47,8 @@ def main(task, num_env_steps, window_size):
 
         if model in ['bc', 'gcpc']:
             steps = xticks
-            values = pd.DataFrame([values.iloc[-1].values] * len(steps), columns=values.columns)           
-      
+            values = pd.DataFrame([values.iloc[-1].values] * len(steps), columns=values.columns)
+
         mean, min_, max_ = values.iloc[:, 0], values.iloc[:, 1], values.iloc[:, 2]
 
         if not model in ['bc', 'gcpc']:

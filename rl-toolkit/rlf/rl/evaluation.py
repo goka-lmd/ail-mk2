@@ -47,7 +47,7 @@ def eval_print(
         {"eval_%s_%s" % (mode, k): np.mean(v) for k, v in eval_info.items()},
         total_num_steps,
     )
-    
+
     args.evaluation_mode = False
     return eval_envs, goal_achieved, eval_step_list
 
@@ -95,7 +95,7 @@ def full_eval(
     vec_norm,
     train_eval_envs
 ):
-    
+
     args.evaluation_mode = True
     ret_info, envs, goal_achieved, goal_distance, eval_step_list = evaluate(
         args,
@@ -132,7 +132,7 @@ def evaluate(
 
     if args.alg != 'dp' and args.clip_actions:
         ac_tensor = utils.ac_space_to_tensor(policy.action_space)
-    
+
     if args.eval_num_processes is None:
         num_processes = args.num_processes
     else:
@@ -141,7 +141,7 @@ def evaluate(
     if final:
         print("***** final evaluating *****")
         args.num_eval = 1000
-   
+
     if eval_envs is None: #or (args.eval_only and args.env_name in simple_env):
         args.force_multi_proc = False
         # rlf.rl.envs.VecPyTorch
@@ -157,10 +157,10 @@ def evaluate(
             alg_env_settings,
             set_eval=True,
         )
- 
+
         # if args.eval_only and args.env_name in simple_env:
         #     eval_envs = origin_env
-    
+
     if args.env_name not in simple_env:
         assert get_vec_normalize(eval_envs) is None, "Norm is manually applied"
 
@@ -198,7 +198,7 @@ def evaluate(
         )
 
     total_num_eval = num_processes * args.num_eval
-    
+
     # Measure the number of episodes completed
     pbar = tqdm(total=total_num_eval)
     evaluated_episode_count = 0
@@ -248,21 +248,29 @@ def evaluate(
     past_obs = torch.Tensor()
     while evaluated_episode_count < total_num_eval:
         #tmp = time.time()
-
         step_info = get_empty_step_info()
         with torch.no_grad():
             act_obs = obfilt(utils.ob_to_np(obs), update=False)
             act_obs = utils.ob_to_tensor(act_obs, args.device)
             #import ipdb; ipdb.set_trace()
-            ac_info = policy.get_action(
-                utils.get_def_obs(act_obs),
-                utils.get_other_obs(obs),
-                hidden_states,
-                eval_masks,
-                step_info,
-                past_obs
-            )
-            
+            if args.alg == 'gcpc':
+                ac_info = policy.get_action(
+                    utils.get_def_obs(act_obs),
+                    utils.get_other_obs(obs),
+                    hidden_states,
+                    eval_masks,
+                    step_info,
+                    past_obs
+                )
+            else:
+                ac_info = policy.get_action(
+                    utils.get_def_obs(act_obs),
+                    utils.get_other_obs(obs),
+                    hidden_states,
+                    eval_masks,
+                    step_info
+                )
+
             hidden_states = ac_info.hxs
 
             if args.alg != 'dp' and args.clip_actions:
@@ -323,14 +331,21 @@ def evaluate(
                         evaluated_episode_count,
                     )
                 )
-        if past_obs.numel() == 0:
-            past_obs = obs.unsqueeze(1)
-        else:
-            past_obs = torch.cat([past_obs, obs.unsqueeze(1)], dim=1)
+        if args.alg == 'gcpc':
+            if past_obs.numel() == 0:
+                if type(obs) is dict:
+                    past_obs = obs['observation'].unsqueeze(1)
+                else:
+                    past_obs = obs.unsqueeze(1)
+            else:
+                if type(obs) is dict:
+                    past_obs = torch.cat([past_obs, obs['observation'].unsqueeze(1)], dim=1)
+                else:
+                    past_obs = torch.cat([past_obs, obs.unsqueeze(1)], dim=1)
         obs = next_obs
-        
+
         step_log_vals = utils.agg_ep_log_stats(infos, ac_info.extra)
-        
+
         for k, v in step_log_vals.items():
             ep_stats[k].extend(v)
         #print("loop %d for k, v in step_log_vals.items(): %d" %(evaluated_episode_count, time.time()-tmp))
@@ -338,7 +353,7 @@ def evaluate(
         if args.env_name == 'maze2d-medium-v2':
             if count_flag:
                 flag  = flag - 1
-            
+
             if is_succ == False:
                 step_num += 1
                 if args.env_name == 'maze2d-medium-v2':
@@ -376,7 +391,7 @@ def evaluate(
                     axs[1].plot([initial[4], next_ob[4]], [initial[5], next_ob[5]],  color='black')
                     axs[1].title.set_text('fail')
                 plt.savefig('goal.png')
-                plt.close()  
+                plt.close()
 
                 if "ep_success" in step_log_vals and args.render_succ_fails:
                     is_succ = step_log_vals["ep_success"][0]
@@ -392,7 +407,7 @@ def evaluate(
             if args.env_name not in simple_env and args.eval_only:
                 save_frames(frames, 'each', evaluated_episode_count, args)
                 frames = []
-    
+
     if args.env_name in simple_env:
         data = torch.load(args.traj_load_path)
         expert_obs = np.squeeze(data['obs'].numpy())
@@ -430,7 +445,7 @@ def evaluate(
     for k, v in ep_stats.items():
         print(" - %s: %.5f" % (k, np.mean(v)))
         ret_info[k] = np.mean(v)
-    
+
     if args.env_name == 'maze2d-medium-v2':
         succ_rate = np.sum(goal_achieved) / args.num_eval
         ret_info['goal_completion'] = succ_rate
@@ -442,7 +457,7 @@ def evaluate(
         save_frames(succ_frames, "succ_" + mode, num_steps, args)
         save_frames(fail_frames, "fail_" + mode, num_steps, args)
     else:
-        save_file = save_frames(frames, mode, num_steps, args)      
+        save_file = save_frames(frames, mode, num_steps, args)
 
     # Switch policy back to train mode
     policy.train()
