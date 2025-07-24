@@ -45,15 +45,18 @@ class RolloutStorage(BaseStorage):
         super().__init__()
         self.value_dim = value_dim
         self.args = args
-
         self.ob_keys = rutils.get_ob_shapes(obs_space)
         self.obs = {}
         for k, space in self.ob_keys.items():
             ob = torch.zeros(num_steps + 1, num_processes, *space)
             if k is None:
                 self.obs = ob
+                if self.args.alg.endswith('-mk2'):
+                    self.past_obs = torch.zeros(num_steps + 1, num_processes, args.ctx_size - 1, *space)
             else:
                 self.obs[k] = ob
+                if self.args.alg.endswith('-mk2') and k == args.policy_ob_key:
+                    self.past_obs = torch.zeros(num_steps + 1, num_processes, args.ctx_size - 1, *space)
 
         # Data from the info dictionary that will be saved.
         self.add_data = {}
@@ -119,22 +122,23 @@ class RolloutStorage(BaseStorage):
         self.actions = self.actions.to(device)
         self.masks = self.masks.to(device)
         self.bad_masks = self.bad_masks.to(device)
+        if self.args.alg.endswith('-mk2'):
+            self.past_obs = self.past_obs.to(device)
         for k, d in self.add_data.items():
             self.add_data[k] = d.to(device)
 
         for k, d in self.hidden_states.items():
             self.hidden_states[k] = d.to(device)
 
-    def insert(self, obs, next_obs, rewards, done, info, ac_info):
+    def insert(self, obs, next_obs, rewards, done, info, ac_info, past_obs):
         super().insert(obs, next_obs, rewards, done, info, ac_info)
         masks, bad_masks = self.compute_masks(done, info)
-
+        
         for k in self.ob_keys:
             if k is None:
                 self.obs[self.step + 1].copy_(next_obs)
             else:
                 self.obs[k][self.step + 1].copy_(next_obs[k])
-
         for i, inf in enumerate(info):
             for k in self.get_extract_info_keys():
                 if k in inf:
@@ -144,12 +148,22 @@ class RolloutStorage(BaseStorage):
                         assign_val = inf[k]
                     self.add_data[k][self.step, i] = assign_val
 
+        if self.args.alg.endswith('-mk2'):
+            _, n_procs, _, obs_dim = self.past_obs.shape
+            if past_obs.numel() == 0:
+                past_obs = torch.zeros(n_procs, self.args.ctx_size - 1, obs_dim).to(self.args.device)
+            elif past_obs.shape[1] < self.args.ctx_size - 1:
+                pad = torch.zeros(n_procs, self.args.ctx_size - (1 + past_obs.shape[1]), obs_dim).to(self.args.device)
+                past_obs = torch.cat([pad, past_obs], dim=1)
+            self.past_obs[self.step + 1].copy_(past_obs)
+            
         self.actions[self.step].copy_(ac_info.action)
         self.action_log_probs[self.step].copy_(ac_info.action_log_probs)
         self.value_preds[self.step].copy_(ac_info.value)
         self.rewards[self.step].copy_(rewards)
         self.masks[self.step + 1].copy_(masks)
         self.bad_masks[self.step + 1].copy_(bad_masks)
+        
         for k in self.hidden_states:
             self.hidden_states[k][self.step + 1].copy_(ac_info.hxs[k])
 
@@ -242,8 +256,10 @@ class RolloutStorage(BaseStorage):
 
     def get_generator(
         self, advantages=None, num_mini_batch=None, mini_batch_size=None, **kwargs
-    ):
-        if self.args.recurrent_policy:
+    ):  
+        if self.args.alg.endswith('-mk2'):
+            data_generator = self.mk2_generator(advantages, num_mini_batch)
+        elif self.args.recurrent_policy:
             data_generator = self.recurrent_generator(advantages, num_mini_batch)
         else:
             data_generator = self.feed_forward_generator(
@@ -338,6 +354,115 @@ class RolloutStorage(BaseStorage):
     def get_scalars(self):
         s, n_s, a, r, m = self.get_np_tensors()
         return int(s[0]), int(n_s[0]), a[0, 0], r[0, 0], m[0, 0]
+    
+    def mk2_generator(self, advantages, num_mini_batch):
+        num_processes = self.rewards.size(1)
+        if num_mini_batch is None:
+            num_mini_batch = self.args.num_mini_batch
+        assert num_processes >= num_mini_batch, (
+            "PPO requires the number of processes ({}) "
+            "to be greater than or equal to the number of "
+            "PPO mini batches ({}).".format(num_processes, num_mini_batch)
+        )
+
+        num_envs_per_batch = num_processes // num_mini_batch
+        perm = torch.randperm(num_processes)
+        for start_ind in range(0, num_processes, num_envs_per_batch):            
+            hidden_states_batch = defaultdict(list)
+            obs_batch = defaultdict(list)
+            other_obs_batch = defaultdict(list)
+            past_obs_batch = []
+            actions_batch = []
+            value_preds_batch = []
+            return_batch = []
+            masks_batch = []
+            old_action_log_probs_batch = []
+            adv_targ = []
+            reward_batch = []
+
+            for offset in range(num_envs_per_batch):
+                ind = perm[start_ind + offset]
+                for k, ob_shape in self.ob_keys.items():
+                    if k is None:
+                        obs_batch[None].append(self.obs[:-1, ind])
+                    elif k == self.args.policy_ob_key or k is None:
+                        obs_batch[k].append(self.obs[k][:-1, ind])
+                    else:
+                        other_obs_batch[k].append(self.obs[k][:-1, ind])
+
+                for k in self.hidden_states:
+                    hidden_states_batch[k].append(self.hidden_states[k][0:1, ind])
+
+                actions_batch.append(self.actions[:, ind])
+                value_preds_batch.append(self.value_preds[:-1, ind])
+                return_batch.append(self.returns[:-1, ind])
+                reward_batch.append(self.rewards[:, ind])
+                masks_batch.append(self.masks[:-1, ind])
+                old_action_log_probs_batch.append(self.action_log_probs[:, ind])
+                if advantages is None:
+                    adv_targ = None
+                else:
+                    adv_targ.append(advantages[:, ind])
+
+                past_obs_batch.append(self.past_obs[:-1, ind])
+
+            T, N = self.num_steps, num_envs_per_batch
+
+            actions_batch = torch.stack(actions_batch, 1)
+            value_preds_batch = torch.stack(value_preds_batch, 1)
+            return_batch = torch.stack(return_batch, 1)
+            reward_batch = torch.stack(reward_batch, 1)
+            masks_batch = torch.stack(masks_batch, 1)
+            old_action_log_probs_batch = torch.stack(old_action_log_probs_batch, 1)
+            if advantages is None:
+                adv_targ = None
+            else:
+                adv_targ = torch.stack(adv_targ, 1)
+
+            past_obs_batch = torch.stack(past_obs_batch, 1)
+
+            for k in hidden_states_batch:
+                hidden_states_batch[k] = torch.stack(hidden_states_batch[k], 1).view(
+                    N, -1
+                )
+            for k in obs_batch:
+                obs_batch[k] = torch.stack(obs_batch[k], 1)
+                obs_batch[k] = _flatten_helper(T, N, obs_batch[k])
+            for k in other_obs_batch:
+                other_obs_batch[k] = torch.stack(other_obs_batch[k], 1)
+                other_obs_batch[k] = _flatten_helper(T, N, other_obs_batch[k])
+            actions_batch = _flatten_helper(T, N, actions_batch)
+            value_preds_batch = _flatten_helper(T, N, value_preds_batch)
+            reward_batch = _flatten_helper(T, N, reward_batch)
+            return_batch = _flatten_helper(T, N, return_batch)
+            masks_batch = _flatten_helper(T, N, masks_batch)
+            past_obs_batch = _flatten_helper(T, N, past_obs_batch)
+            old_action_log_probs_batch = _flatten_helper(
+                T, N, old_action_log_probs_batch
+            )
+            if advantages is None:
+                adv_targ = None
+            else:
+                adv_targ = _flatten_helper(T, N, adv_targ)
+            
+            
+
+            if len(obs_batch) == 1:
+                obs_batch = next(iter(obs_batch.values()))
+
+            yield {
+                "other_state": other_obs_batch,
+                "reward": reward_batch,
+                "hxs": hidden_states_batch,
+                "state": obs_batch,
+                "action": actions_batch,
+                "value": value_preds_batch,
+                "return": return_batch,
+                "mask": masks_batch,
+                "prev_log_prob": old_action_log_probs_batch,
+                "adv": adv_targ,
+                "past_obs": past_obs_batch,
+            }
 
     def recurrent_generator(self, advantages, num_mini_batch):
         # Only called if args.recurrent_policy is True
