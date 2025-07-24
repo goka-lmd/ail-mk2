@@ -5,6 +5,11 @@ import rlf.rl.utils as rutils
 from rlf.rl.model import def_mlp_weight_init
 from rlf.rl.model import weight_init
 
+import torch
+import torch.nn.functional as F
+from typing import Tuple, Union
+from torch import device
+Device = Union[device, str, int, None]
 
 class ActorCritic(BaseNetPolicy):
     """

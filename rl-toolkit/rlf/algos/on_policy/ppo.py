@@ -17,13 +17,18 @@ class PPO(OnPolicy):
         for e in range(self._arg('num_epochs')):
             data_generator = rollouts.get_generator(advantages,
                     self._arg('num_mini_batch'))
-
             for sample in data_generator:
                 # Get all the data from our batch sample
-                ac_eval = self.policy.evaluate_actions(sample['state'],
-                        sample['other_state'],
-                        sample['hxs'], sample['mask'],
-                        sample['action'])
+                if self.args.alg.endswith('-mk2'):
+                    ac_eval = self.policy.evaluate_actions(sample['state'],
+                            sample['other_state'],
+                            sample['hxs'], sample['mask'],
+                            sample['action'],sample['past_obs'])
+                else:
+                    ac_eval = self.policy.evaluate_actions(sample['state'],
+                            sample['other_state'],
+                            sample['hxs'], sample['mask'],
+                            sample['action'])
 
                 ratio = torch.exp(ac_eval['log_prob'] - sample['prev_log_prob'])
                 surr1 = ratio * sample['adv']
@@ -79,4 +84,8 @@ class PPO(OnPolicy):
             type=float,
             default=0.5,
             help='value loss coefficient')
+        parser.add_argument(f"--{self.arg_prefix}num-mini-batch",
+            type=int,
+            default=32)
+        
 

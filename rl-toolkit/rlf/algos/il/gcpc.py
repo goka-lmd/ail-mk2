@@ -75,7 +75,7 @@ class GCPC(BaseILAlgo2):
         action_loss = []
         prev_num = 0
 
-        # First BC
+        # First GCPC
         with tqdm(total=self.args.gcpc_num_epochs) as pbar:
             while self.num_epochs < self.args.gcpc_num_epochs:
                 super().pre_update(self.num_bc_updates)

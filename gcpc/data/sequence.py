@@ -154,14 +154,14 @@ class MAEDataModule(pl.LightningDataModule):
 
         train_buffer, used_length = build_buffer(epi_buffer['obs'], train_mask, 0)
         val_buffer, used_length = build_buffer(epi_buffer['obs'], val_mask, used_length)
-
+        
         if stage == 'trl':  # trajectory representation learning
             self.train = PretrainDataset(self.env_name, train_buffer, self.ctx_size)
             self.val = PretrainDataset(self.env_name, val_buffer, self.ctx_size)
         else:
             self.train = SequenceDataset(self.env_name, train_buffer, self.ctx_size)
             self.val = SequenceDataset(self.env_name, val_buffer, self.ctx_size)
-
+        print(f"train:{len(self.train)}, val:{len(self.val)}")
 
     def train_dataloader(self):
         if isinstance(self.train, PretrainDataset):

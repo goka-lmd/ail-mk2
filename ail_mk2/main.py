@@ -46,7 +46,8 @@ from goal_prox.policies.grid_world_expert import GridWorldExpert
 
 from drail.drail_un import DRAIL_UN
 from drail.drail import DRAIL
-from drail.get_policy import get_ppo_policy, get_basic_policy, get_diffusion_policy, get_deep_ddpg_policy, get_deep_sac_policy, get_deep_iqlearn_policy, get_deep_basic_policy
+from drail.drail_mk2 import DRAIL_MK2
+from drail.get_policy import get_ppo_policy, get_basic_policy, get_diffusion_policy, get_deep_ddpg_policy, get_deep_sac_policy, get_deep_iqlearn_policy, get_deep_basic_policy, get_ppo_mk2_policy
 from drail.get_policy import get_gcpc_policy
 
 def get_setup_dict():
@@ -71,6 +72,7 @@ def get_setup_dict():
         "goal-gail": (GoalGAIL(), get_deep_ddpg_policy),
         "drail-un": (DRAIL_UN(), get_ppo_policy),
         "drail": (DRAIL(), get_ppo_policy),
+        "drail-mk2": (DRAIL_MK2(), get_ppo_mk2_policy),
         "gcpc": (GCPC(), partial(get_gcpc_policy, is_stoch=False)),
     }
 

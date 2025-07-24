@@ -9,7 +9,7 @@
 from functools import partial
 import torch.nn as nn
 import drail.ddpm.policy_model as policy_model
-from rlf.policies import BasicPolicy, DistActorCritic
+from rlf.policies import BasicPolicy, DistActorCritic, DistActorCritic_mk2
 from rlf.policies.actor_critic.dist_actor_q import (DistActorQ, get_sac_actor,
                                                     get_sac_critic)
 from rlf.policies.actor_critic.reg_actor_critic import RegActorCritic
@@ -25,6 +25,19 @@ def get_ppo_policy(env_name, args):
     return DistActorCritic(
         get_actor_fn=lambda _, i_shape: MLPBasic(
             i_shape[0], hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers
+        ),
+        get_critic_fn=lambda _, i_shape, asp: MLPBasic(
+            i_shape[0], hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers
+        ),
+    )
+
+
+def get_ppo_mk2_policy(env_name, args):
+    if env_name.startswith("MiniGrid") and args.gw_img:
+        return DistActorCritic(get_base_net_fn=lambda i_shape: GwImgEncoder(i_shape))
+    return DistActorCritic_mk2(
+        get_actor_fn=lambda _, i_shape: MLPBasic(
+            i_shape[0]+args.hidden_dim, hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers
         ),
         get_critic_fn=lambda _, i_shape, asp: MLPBasic(
             i_shape[0], hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers

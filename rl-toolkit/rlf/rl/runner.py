@@ -41,7 +41,7 @@ class Runner:
     def training_iter(self, update_iter: int, beginning=False, t=1) -> Dict[str, Any]:
         self.log.start_interval_log()
         self.updater.pre_update(update_iter)
-        
+        past_obs = torch.Tensor()
         for step in self.updater.get_steps_generator(update_iter):
             # Sample actions
             obs = self.storage.get_obs(step)
@@ -49,13 +49,23 @@ class Runner:
             step_info = get_step_info(update_iter, step, self.episode_count, self.args)
             
             with self.train_ctx():
-                ac_info = self.policy.get_action(
-                    utils.get_def_obs(obs, self.args.policy_ob_key),
-                    utils.get_other_obs(obs),
-                    self.storage.get_hidden_state(step),
-                    self.storage.get_masks(step),
-                    step_info,
-                )
+                if self.args.alg.endswith('-mk2'):
+                    ac_info = self.policy.get_action(
+                        utils.get_def_obs(obs, self.args.policy_ob_key),
+                        utils.get_other_obs(obs),
+                        self.storage.get_hidden_state(step),
+                        self.storage.get_masks(step),
+                        step_info,
+                        past_obs
+                    )
+                else:
+                    ac_info = self.policy.get_action(
+                        utils.get_def_obs(obs, self.args.policy_ob_key),
+                        utils.get_other_obs(obs),
+                        self.storage.get_hidden_state(step),
+                        self.storage.get_masks(step),
+                        step_info
+                    )
                 if self.args.clip_actions:
                     ac_info.clip_action(*self.ac_tensor)
 
@@ -69,7 +79,23 @@ class Runner:
             self.log.collect_step_info(step_log_vals)
 
             done = torch.tensor(done.reshape(-1, 1), dtype=torch.bool)
-            self.storage.insert(obs, next_obs, reward, done, infos, ac_info)
+
+            if self.args.alg.endswith('-mk2'):
+                self.storage.insert(obs, next_obs, reward, done, infos, ac_info, past_obs)
+                if past_obs.numel() == 0:
+                    if type(obs) is dict:
+                        past_obs = obs[self.args.policy_ob_key].unsqueeze(1)
+                    else:
+                        past_obs = obs.unsqueeze(1)
+                else:
+                    if type(obs) is dict:
+                        past_obs = torch.cat([past_obs, obs[self.args.policy_ob_key].unsqueeze(1)], dim=1)
+                    else:
+                        past_obs = torch.cat([past_obs, obs.unsqueeze(1)], dim=1)
+                    if past_obs.shape[1] >= self.args.ctx_size:
+                       past_obs = past_obs[:, -(self.args.ctx_size-1):, :]
+            else:
+                self.storage.insert(obs, next_obs, reward, done, infos, ac_info, None)
 
         updater_log_vals = self.updater.update(self.storage, self.args, beginning, t)
 

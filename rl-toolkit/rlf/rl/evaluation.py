@@ -253,7 +253,7 @@ def evaluate(
             act_obs = obfilt(utils.ob_to_np(obs), update=False)
             act_obs = utils.ob_to_tensor(act_obs, args.device)
             #import ipdb; ipdb.set_trace()
-            if args.alg == 'gcpc':
+            if args.alg == 'gcpc' or args.alg.endswith('-mk2'):
                 ac_info = policy.get_action(
                     utils.get_def_obs(act_obs),
                     utils.get_other_obs(obs),
@@ -331,17 +331,19 @@ def evaluate(
                         evaluated_episode_count,
                     )
                 )
-        if args.alg == 'gcpc':
+        if args.alg == 'gcpc' or args.alg.endswith('-mk2'):
             if past_obs.numel() == 0:
                 if type(obs) is dict:
-                    past_obs = obs['observation'].unsqueeze(1)
+                    past_obs = obs[args.policy_ob_key].unsqueeze(1)
                 else:
                     past_obs = obs.unsqueeze(1)
             else:
                 if type(obs) is dict:
-                    past_obs = torch.cat([past_obs, obs['observation'].unsqueeze(1)], dim=1)
+                    past_obs = torch.cat([past_obs, obs[args.policy_ob_key].unsqueeze(1)], dim=1)
                 else:
                     past_obs = torch.cat([past_obs, obs.unsqueeze(1)], dim=1)
+                if past_obs.shape[1] >= args.ctx_size:
+                    past_obs = past_obs[:, -(args.ctx_size - 1):, :]
         obs = next_obs
 
         step_log_vals = utils.agg_ep_log_stats(infos, ac_info.extra)
