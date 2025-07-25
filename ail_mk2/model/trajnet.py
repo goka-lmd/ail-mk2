@@ -205,10 +205,9 @@ class TrajNet(pl.LightningModule):
             _, slot_out = self(pred_o, f_obs_mask)
             slot_out_flat = slot_out.reshape(B, -1)
             pred_disc_fake = self.discriminator(slot_out_flat)
-            # loss_adv = -torch.log(pred_disc_fake + 1e-8).mean()
             loss_adv = F.binary_cross_entropy(pred_disc_fake, torch.ones_like(pred_disc_fake))
 
-        return loss_o + self.adv_weight * loss_adv
+        return loss_o + self.adv_weight * loss_adv, pred_disc_fake.mean().item()
 
     def loss_disc(self, slot_out_fake, slot_out_real):
         B = slot_out_fake.size(0)
@@ -288,7 +287,7 @@ class TrajNet(pl.LightningModule):
         # --------- optimizer_idx = 0 → Update generator ---------
         if optimizer_idx == 0:
             pred_o, _ = self(observations, obs_mask)
-            loss = self.loss_gen(observations, pred_o, padding_mask, obs_mask)
+            loss, _ = self.loss_gen(observations, pred_o, padding_mask, obs_mask)
 
             self.log("train/loss_gen", loss, sync_dist=True)
             return loss
@@ -346,12 +345,12 @@ class TrajNet(pl.LightningModule):
         else:
             raise NotImplementedError
 
-        pred_o, slot_out = self(observations, obs_mask)
-        loss = self.loss_gen(observations, pred_o, padding_mask, obs_mask)
+        pred_o, _ = self(observations, obs_mask)
+        loss, disc_out = self.loss_gen(observations, pred_o, padding_mask, obs_mask)
 
         self.log_dict({
             'val/val_loss': loss,
-            'val/disc_output_mean': self.discriminator(slot_out.reshape(batch_size, -1)).mean().item()
+            'val/disc_output_mean': disc_out
             },
         sync_dist=True)
 
