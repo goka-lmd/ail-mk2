@@ -160,9 +160,10 @@ class TrajectoryDiscriminator(nn.Module):
 
 
 class TrajNet(pl.LightningModule):
-    def __init__(self, seed: int, env_name: str, obs_dim: int, action_dim: int, lr: float, epochs: int, ctx_size: int, future_horizon: int, stage: str, model_config: DictConfig, **kwargs):
+    def __init__(self, seed: int, env_name: str, obs_dim: int, action_dim: int, lr: float, epochs: int, ctx_size: int, future_horizon: int, embed_dim: int, stage: str, model_config: DictConfig, **kwargs):
         super().__init__()
 
+        model_config.embed_dim = embed_dim
         self.env_name = env_name
         self.ctx_size = ctx_size
         self.future_horizon = future_horizon
@@ -175,9 +176,7 @@ class TrajNet(pl.LightningModule):
         self.lr = lr
         self.num_epochs = epochs
         self.model = SlotMAE(obs_dim, action_dim, model_config)
-
-        embed_dim = model_config.embed_dim if model_config.embed_dim != None else obs_dim
-
+        
         self.discriminator = TrajectoryDiscriminator(input_dim=embed_dim * model_config.n_slots)
         self.adv_weight = model_config.get("adv_weight", 0.05)
 
