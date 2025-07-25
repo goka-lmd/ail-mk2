@@ -145,7 +145,7 @@ class SlotMAE(nn.Module):
 class TrajectoryDiscriminator(nn.Module):
     def __init__(self, input_dim, hidden_dim=256):
         super().__init__()
-        self.model = nn.Sequential(
+        self.disc_model = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
@@ -155,7 +155,7 @@ class TrajectoryDiscriminator(nn.Module):
         )
 
     def forward(self, traj_repr):
-        return self.model(traj_repr)
+        return self.disc_model(traj_repr)
     
 
 class TrajNet(pl.LightningModule):

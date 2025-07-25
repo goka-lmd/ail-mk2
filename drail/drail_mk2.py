@@ -496,7 +496,7 @@ class DRAILDiscrim(BaseIRLAlgo):
         parser.add_argument("--mae-ckpt-path", type=str, required=True)
         parser.add_argument("--pdrop", type=float, default=0)
         parser.add_argument("--ctx-size", type=int, default=4)
-        parser.add_argument("--num-mini-batch", type=int, default=32)
+        # parser.add_argument("--num-mini-batch", type=int, default=32)
 
     def load_resume(self, checkpointer):
         super().load_resume(checkpointer)
