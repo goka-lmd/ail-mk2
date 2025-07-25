@@ -28,7 +28,6 @@ def main(cfg: DictConfig):
     else:
         dm.setup('fit')
 
-
     ailmk2_trl = hydra.utils.instantiate(cfg.model,
         seed=cfg.seed,
         env_name=cfg.env_name,
@@ -36,10 +35,9 @@ def main(cfg: DictConfig):
         action_dim=dm.get_action_dim(),
         epochs=cfg.exp.epochs,
         lr=cfg.exp.lr,
-        use_scheduler=cfg.exp.use_scheduler,
         ctx_size=cfg.exp.ctx_size,
         future_horizon=cfg.exp.future_horizon,
-        num_eval_rollouts=cfg.exp.num_eval_rollouts
+        embed_dim=cfg.exp.embed_dim
     )
 
     working_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
