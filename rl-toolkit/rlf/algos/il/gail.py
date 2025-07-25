@@ -66,11 +66,18 @@ class GailDiscrim(BaseIRLAlgo):
         ac_dim = rutils.get_ac_dim(self.action_space)
         base_net = self.policy.get_base_net_fn(ob_shape)
         discrim, dhidden_dim = self.get_discrim()
-        discrim_head = InjectNet(
-            base_net.net,
-            discrim,
-            base_net.output_shape[0], dhidden_dim, ac_dim,
-            self.args.action_input)
+        if self.args.prefix.endswith('-rnn'):
+            discrim_head = InjectNet(
+                base_net.net,
+                discrim,
+                ob_shape[0], dhidden_dim, ac_dim,
+                self.args.action_input)
+        else:
+            discrim_head = ConcatLayer(
+                base_net.net,
+                discrim,
+                base_net.output_shape[0], dhidden_dim, ac_dim,
+                self.args.action_input)
 
         return discrim_head.to(self.args.device)
 
@@ -328,6 +335,7 @@ class GailDiscrim(BaseIRLAlgo):
                 One of [airl, raw, gail]. Changes the reward computation. Does
                 not change training.
                 """)
+        parser.add_argument('--num-mini-batch', type=int, default=32)
 
     def load_resume(self, checkpointer):
         super().load_resume(checkpointer)

@@ -129,6 +129,9 @@ class RunSettings(MasterClass):
 
         env_parser = argparse.ArgumentParser()
         get_env_interface(args.env_name)(args).get_add_args(env_parser)
+
+        if args.prefix.endswith('-rnn'):args.recurrent_policy = True
+
         env_args, rest = env_parser.parse_known_args(rest)
         # Assign the env args to the main args namespace.
         rutils.update_args(args, vars(env_args))

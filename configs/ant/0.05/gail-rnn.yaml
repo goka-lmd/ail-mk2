@@ -9,7 +9,7 @@
 project: 'drail-project'
 program: drail/main.py
 method: grid
-name: Ant-gail-0.00
+name: Ant-gail-rnn-0.05
 command:
   - ${env}
   - python3
@@ -20,9 +20,9 @@ command:
 
 parameters:
   prefix:
-    value: gail
+    value: gail-rnn
   alg:
-    value: gail
+    value: gail-rnn
   env-name:
     value: AntGoal-v0
   traj-load-path:
@@ -34,7 +34,7 @@ parameters:
   traj-frac:
     value: 0.5
   ant-noise:
-    value: 0.0
+    value: 0.05
   action-input:
     value: True
   num-epochs:
@@ -51,7 +51,7 @@ parameters:
     value: 0.0001
   ppo-hidden-dim:
     value: 256
-  seed:
+  seed: 
     values: [1,2,3,4,5]
   num-env-steps:
     value: 10000000

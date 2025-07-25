@@ -33,7 +33,7 @@ def get_ppo_policy(env_name, args):
 
 def get_rnn_ppo_policy(env_name, args):
     if env_name.startswith("MiniGrid") and args.gw_img:
-        return DistActorCritic(get_base_net_fn=lambda i_shape: GwImgEncoder(i_shape))
+        return DistActorCritic(get_base_net_fn=lambda i_shape: GwImgEncoder(i_shape,args.ppo_hidden_dim))
 
     return DistActorCritic(
         get_actor_fn=lambda _, i_shape: MLPBasicRNN(

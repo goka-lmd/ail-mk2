@@ -261,7 +261,7 @@ class RolloutStorage(BaseStorage):
                 advantages, num_mini_batch, mini_batch_size
             )
         elif self.args.recurrent_policy:
-            data_generator = self.recurrent_generator(advantages, num_mini_batch)
+            data_generator = self.recurrent_generator(advantages, self.args.num_mini_batch)
         else:
             data_generator = self.feed_forward_generator(
                 advantages, num_mini_batch, mini_batch_size
@@ -468,7 +468,10 @@ class RolloutStorage(BaseStorage):
                 reward_batch.append(self.rewards[:, ind])
                 masks_batch.append(self.masks[:-1, ind])
                 old_action_log_probs_batch.append(self.action_log_probs[:, ind])
-                adv_targ.append(advantages[:, ind])
+                if advantages is None:
+                    adv_targ = None
+                else:
+                    adv_targ.append(advantages[:, ind])
 
             T, N = self.num_steps, num_envs_per_batch
             # These are all tensors of size (T, N, -1)
@@ -478,7 +481,10 @@ class RolloutStorage(BaseStorage):
             reward_batch = torch.stack(reward_batch, 1)
             masks_batch = torch.stack(masks_batch, 1)
             old_action_log_probs_batch = torch.stack(old_action_log_probs_batch, 1)
-            adv_targ = torch.stack(adv_targ, 1)
+            if advantages is None:
+                adv_targ = None
+            else:
+                adv_targ = torch.stack(adv_targ, 1)
 
             # States is just a (N, -1) tensor
             for k in hidden_states_batch:
@@ -500,7 +506,10 @@ class RolloutStorage(BaseStorage):
             old_action_log_probs_batch = _flatten_helper(
                 T, N, old_action_log_probs_batch
             )
-            adv_targ = _flatten_helper(T, N, adv_targ)
+            if advantages is None:
+                adv_targ = None
+            else:
+                adv_targ = _flatten_helper(T, N, adv_targ)
 
             # No need to return obs dict if there's only one thing in
             # dictionary

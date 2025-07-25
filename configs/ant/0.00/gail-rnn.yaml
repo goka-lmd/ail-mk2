@@ -9,7 +9,7 @@
 project: 'drail-project'
 program: drail/main.py
 method: grid
-name: Ant-gail-0.00
+name: Ant-gail-rnn-0.00
 command:
   - ${env}
   - python3
@@ -20,9 +20,9 @@ command:
 
 parameters:
   prefix:
-    value: gail
+    value: gail-rnn
   alg:
-    value: gail
+    value: gail-rnn
   env-name:
     value: AntGoal-v0
   traj-load-path:
