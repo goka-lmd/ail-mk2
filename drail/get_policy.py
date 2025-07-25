@@ -37,7 +37,7 @@ def get_ppo_mk2_policy(env_name, args):
         return DistActorCritic(get_base_net_fn=lambda i_shape: GwImgEncoder(i_shape))
     return DistActorCritic_mk2(
         get_actor_fn=lambda _, i_shape: MLPBasic(
-            i_shape[0]+args.hidden_dim, hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers
+            i_shape[0]*2, hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers
         ),
         get_critic_fn=lambda _, i_shape, asp: MLPBasic(
             i_shape[0], hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers

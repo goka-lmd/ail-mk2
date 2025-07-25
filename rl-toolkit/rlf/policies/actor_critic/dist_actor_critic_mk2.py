@@ -43,17 +43,13 @@ class DistActorCritic_mk2(ActorCritic):
         super().init(obs_space, action_space, args)
         mae_encoder = TrajNet.load_from_checkpoint(args.mae_ckpt_path, weights_only=False)
         self.slotmae = mae_encoder.model
-        self.embed_dim = args.hidden_dim
+        # self.embed_dim = args.hidden_dim
         self.obs_dim = self.slotmae.obs_dim
         self.action_dim = self.slotmae.action_dim
         self.n_slots = self.slotmae.n_slots
         self.ctx_size = args.ctx_size
-
-        base_shape = rutils.get_obs_shape(obs_space, args.policy_ob_key)
-        # aug_shape  = (base_shape[0] + self.slotmae.embed_dim, )
-
         self.actor = self.get_actor_fn(
-            base_shape[0],
+            rutils.get_obs_shape(obs_space, args.policy_ob_key),
             self._get_base_out_shape())
         self.dist = self.get_dist_fn(
             self.actor.output_shape, self.action_space)
@@ -62,7 +58,7 @@ class DistActorCritic_mk2(ActorCritic):
             param.requires_grad = False
 
         self.slotmae.eval().to(args.device)
-        self.bn_embed = nn.Linear(self.n_slots * self.slotmae.embed_dim, self.embed_dim)
+        self.bn_embed = nn.Linear(self.n_slots * self.slotmae.embed_dim, self.slotmae.embed_dim)
 
     # def ar_mask(self, batch_size: int, length: int, keep_len: float, device: Device):
     #     mask = torch.ones([batch_size, length], device=device)
@@ -109,7 +105,7 @@ class DistActorCritic_mk2(ActorCritic):
         nonzero_len = (state.abs().sum(dim=-1) != 0).sum(dim=1)
         obs_mask = self.ar_mask(batch_size, length, nonzero_len, state.device)
         with torch.no_grad():
-            latent_future, _ = self.slotmae.encode(state, obs_mask)
+            latent_future, _ = self.slotmae.encode(state, obs_mask)            
         bottleneck = F.relu(self.bn_embed(latent_future.view(batch_size, 1, -1)))
 
         base_features_ = torch.cat([base_features, bottleneck.squeeze(1)], dim=-1)

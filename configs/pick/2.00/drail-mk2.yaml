@@ -1,7 +1,7 @@
 project: 'ail-mk2-project'
 program: ail_mk2/main.py
 method: grid
-name: Pick-drail-mk2-1.00
+name: Pick-drail-mk2-2.00
 command:
   - ${env}
   - python3
@@ -53,9 +53,9 @@ parameters:
   discrim-depth:
     value: 3
   goal-noise-ratio:
-    value: 1.0
+    value: 2.00
   noise-ratio:
-    value: 1.0
+    value: 2.00
   seed:
     values: [1,2,3,4,5]
   cuda:
