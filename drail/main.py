@@ -47,12 +47,13 @@ from goal_prox.policies.grid_world_expert import GridWorldExpert
 
 from drail.drail_un import DRAIL_UN
 from drail.drail import DRAIL
-from drail.get_policy import get_ppo_policy, get_basic_policy, get_diffusion_policy, get_deep_ddpg_policy, get_deep_sac_policy, get_deep_iqlearn_policy, get_deep_basic_policy
+from drail.get_policy import get_ppo_policy, get_basic_policy, get_diffusion_policy, get_deep_ddpg_policy, get_deep_sac_policy, get_deep_iqlearn_policy, get_deep_basic_policy, get_rnn_ppo_policy
 
 
 def get_setup_dict():
     return {
         "gail": (GAIL(), get_ppo_policy),
+        "gail-rnn": (GAIL(), get_rnn_ppo_policy),
         "wail": (WAIL(), get_ppo_policy),
         "pwil": (PWIL(), get_ppo_policy),
         "uncert-gail": (UncertGAIL(), get_ppo_policy),

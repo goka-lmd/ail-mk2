@@ -295,6 +295,19 @@ class MLPBasic(MLPBase):
             num_inputs, False, [hidden_size] * num_layers, weight_init, get_activation
         )
 
+class MLPBasicRNN(MLPBase):
+    def __init__(
+        self,
+        num_inputs,
+        hidden_size,
+        num_layers,
+        weight_init=def_mlp_weight_init,
+        get_activation=lambda: nn.Tanh(),
+    ):
+        super().__init__(
+            num_inputs, True, [hidden_size] * num_layers, weight_init, get_activation
+        )
+
 
 class TwoLayerMlpWithAction(BaseNet):
     def __init__(
