@@ -46,7 +46,7 @@ class SlotMAE(nn.Module):
         super().__init__()
         self.obs_dim = obs_dim
         self.action_dim = action_dim
-        self.embed_dim = config.embed_dim
+        self.embed_dim = config.embed_dim if config.embed_dim is not None else obs_dim
         self.n_slots = config.n_slots
         self.use_goal = config.use_goal
 
@@ -145,12 +145,13 @@ class SlotMAE(nn.Module):
 class TrajectoryDiscriminator(nn.Module):
     def __init__(self, input_dim, hidden_dim=256):
         super().__init__()
+        hidden_dim = input_dim * 4
         self.disc_model = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(hidden_dim, input_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, 1),
+            nn.Linear(input_dim, 1),
             nn.Sigmoid()  # 0: fake, 1: expert
         )
 
@@ -175,7 +176,9 @@ class TrajNet(pl.LightningModule):
         self.num_epochs = epochs
         self.model = SlotMAE(obs_dim, action_dim, model_config)
 
-        self.discriminator = TrajectoryDiscriminator(input_dim=model_config.embed_dim * model_config.n_slots)
+        embed_dim = model_config.embed_dim if model_config.embed_dim != None else obs_dim
+
+        self.discriminator = TrajectoryDiscriminator(input_dim=embed_dim * model_config.n_slots)
         self.adv_weight = model_config.get("adv_weight", 0.05)
 
         self.save_hyperparameters()
