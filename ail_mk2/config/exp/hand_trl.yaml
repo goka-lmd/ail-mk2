@@ -1,6 +1,6 @@
 batch_size: 1024
 lr: 1e-4
-ctx_size: 4
+ctx_size: 8
 future_horizon: 12
-embed_dim: 16
+embed_dim: 64
 epochs: 100

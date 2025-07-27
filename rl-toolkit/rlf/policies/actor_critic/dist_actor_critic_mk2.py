@@ -108,8 +108,8 @@ class DistActorCritic_mk2(ActorCritic):
             latent_future, _ = self.slotmae.encode(state, obs_mask)            
         bottleneck = F.relu(self.bn_embed(latent_future.view(batch_size, 1, -1)))
 
-        base_features_ = torch.cat([base_features, bottleneck.squeeze(1)], dim=-1)
-        actor_features, _ = self.actor(base_features_, hxs, masks)
+        states_mem = torch.cat([base_features, bottleneck.squeeze(1)], dim=-1)
+        actor_features, _ = self.actor(states_mem, hxs, masks)
 
         dist = self.dist(actor_features)
 

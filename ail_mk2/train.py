@@ -27,6 +27,10 @@ def main(cfg: DictConfig):
         dm.setup(stage=cfg.model.stage)
     else:
         dm.setup('fit')
+    
+    print("-"*80)
+    print(f"obs_dim: {dm.get_obs_dim()}")
+    print("-"*80)
 
     ailmk2_trl = hydra.utils.instantiate(cfg.model,
         seed=cfg.seed,
