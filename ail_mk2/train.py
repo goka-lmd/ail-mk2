@@ -1,5 +1,6 @@
 import os
 import torch
+import math
 torch.set_float32_matmul_precision('medium')
 
 import pytorch_lightning as pl
@@ -70,7 +71,6 @@ def main(cfg: DictConfig):
             auto_insert_metric_name=False
         )
 
-
     trainer = pl.Trainer(
         accelerator='gpu',
         devices=cfg.devices,
@@ -78,7 +78,7 @@ def main(cfg: DictConfig):
         logger=wdb_logger,
         gradient_clip_val=1.0,
         callbacks=[progressbar, lr_monitor, checkpoint],
-        accumulate_grad_batches=1,
+        # accumulate_grad_batches=1,
     )
 
     print(f'\nSeed: {cfg.seed}')

@@ -34,7 +34,6 @@ class DistActorCritic_mk2(ActorCritic):
         if get_actor_fn is None:
             get_actor_fn = putils.get_def_actor
         self.get_actor_fn = get_actor_fn
-
         if get_dist_fn is None:
             get_dist_fn = putils.get_def_dist
         self.get_dist_fn = get_dist_fn
@@ -49,7 +48,7 @@ class DistActorCritic_mk2(ActorCritic):
         self.n_slots = self.slotmae.n_slots
         self.ctx_size = args.ctx_size
         self.actor = self.get_actor_fn(
-            rutils.get_obs_shape(obs_space, args.policy_ob_key),
+            rutils.get_obs_shape(obs_space, args.policy_ob_key)[0]*2,
             self._get_base_out_shape())
         self.dist = self.get_dist_fn(
             self.actor.output_shape, self.action_space)
@@ -58,12 +57,6 @@ class DistActorCritic_mk2(ActorCritic):
             param.requires_grad = False
 
         self.slotmae.eval().to(args.device)
-        self.bn_embed = nn.Linear(self.n_slots * self.slotmae.embed_dim, self.slotmae.embed_dim)
-
-    # def ar_mask(self, batch_size: int, length: int, keep_len: float, device: Device):
-    #     mask = torch.ones([batch_size, length], device=device)
-    #     mask[:, :keep_len] = 0
-    #     return mask
 
     def ar_mask(self, batch_size: int, length: int, keep_lens: torch.Tensor, device):
         keep_lens = keep_lens.to(device).long()
@@ -105,12 +98,9 @@ class DistActorCritic_mk2(ActorCritic):
         nonzero_len = (state.abs().sum(dim=-1) != 0).sum(dim=1)
         obs_mask = self.ar_mask(batch_size, length, nonzero_len, state.device)
         with torch.no_grad():
-            latent_future, _ = self.slotmae.encode(state, obs_mask)            
-        bottleneck = F.relu(self.bn_embed(latent_future.view(batch_size, 1, -1)))
-
-        states_mem = torch.cat([base_features, bottleneck.squeeze(1)], dim=-1)
-        actor_features, _ = self.actor(states_mem, hxs, masks)
-
+            latent_future, _ = self.slotmae.encode(state, obs_mask)
+        actor_features, _ = self.actor(base_features, latent_future.view(batch_size, 1, -1).squeeze(1), hxs, masks)
+        # actor_features, _ = self.actor(base_features, hxs, masks)
         dist = self.dist(actor_features)
 
         return dist, value, hxs

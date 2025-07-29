@@ -142,21 +142,21 @@ class SlotMAE(nn.Module):
         return pred_o, bottleneck
 
 
-class TrajectoryDiscriminator(nn.Module):
-    def __init__(self, input_dim, hidden_dim=256):
-        super().__init__()
-        hidden_dim = input_dim * 4
-        self.disc_model = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, input_dim),
-            nn.ReLU(),
-            nn.Linear(input_dim, 1),
-            nn.Sigmoid()  # 0: fake, 1: expert
-        )
+# class TrajectoryDiscriminator(nn.Module):
+#     def __init__(self, input_dim, hidden_dim=256):
+#         super().__init__()
+#         hidden_dim = input_dim * 4
+#         self.disc_model = nn.Sequential(
+#             nn.Linear(input_dim, hidden_dim),
+#             nn.ReLU(),
+#             nn.Linear(hidden_dim, input_dim),
+#             nn.ReLU(),
+#             nn.Linear(input_dim, 1),
+#             nn.Sigmoid()  # 0: fake, 1: expert
+#         )
 
-    def forward(self, traj_repr):
-        return self.disc_model(traj_repr)
+#     def forward(self, traj_repr):
+#         return self.disc_model(traj_repr)
 
 
 class TrajNet(pl.LightningModule):
@@ -177,53 +177,65 @@ class TrajNet(pl.LightningModule):
         self.num_epochs = epochs
         self.model = SlotMAE(obs_dim, action_dim, model_config)
         
-        self.discriminator = TrajectoryDiscriminator(input_dim=embed_dim * model_config.n_slots)
-        self.adv_weight = model_config.get("adv_weight", 0.05)
+        # self.discriminator = TrajectoryDiscriminator(input_dim=embed_dim * model_config.n_slots)
+        # self.adv_weight = model_config.get("adv_weight", 0.05)
 
         self.save_hyperparameters()
 
     def forward(self, observations: Tensor, obs_mask: Tensor):
         return self.model.forward(observations, obs_mask)
 
-    def loss_gen(self, target_o: Tensor, pred_o: Tensor, padding_mask: Tensor, obs_mask: Tensor):
-        # masked autoencoder loss
+    # def loss_gen(self, target_o: Tensor, pred_o: Tensor, padding_mask: Tensor, obs_mask: Tensor):
+    #     # masked autoencoder loss
+    #     B, T = padding_mask.size()
+    #     padding_mask = padding_mask.float()
+
+    #     valid_mask = (obs_mask.bool() & (padding_mask == 0))
+    #     valid_mask = valid_mask.unsqueeze(-1).expand_as(pred_o)
+    #     masked_pred = pred_o[valid_mask]
+    #     masked_target = target_o[valid_mask]
+
+    #     if masked_pred.numel() > 0:
+    #         loss_o = F.mse_loss(masked_pred, masked_target, reduction='mean')
+    #     else:
+    #         loss_o = torch.tensor(0.0, device=pred_o.device)
+
+    #     # discriminator loss
+    #     with torch.no_grad():
+    #         f_obs_mask = obs_mask.clone()
+    #         f_obs_mask[:,:self.ctx_size] = 0.0
+    #         # f_obs_mask[:,:self.ctx_size] = 1.0 - f_obs_mask[:,:self.ctx_size]
+    #         _, slot_out = self(pred_o, f_obs_mask)
+    #         slot_out_flat = slot_out.reshape(B, -1)
+    #         pred_disc_fake = self.discriminator(slot_out_flat)
+    #         loss_adv = F.binary_cross_entropy(pred_disc_fake, torch.ones_like(pred_disc_fake))
+
+    #     return loss_o + self.adv_weight * loss_adv, pred_disc_fake.mean().item()
+
+    # def loss_disc(self, slot_out_fake, slot_out_real):
+    #     B = slot_out_fake.size(0)
+
+    #     fake_flat = slot_out_fake.reshape(B, -1).detach()
+    #     real_flat = slot_out_real.reshape(B, -1).detach()
+
+    #     pred_fake = self.discriminator(fake_flat)
+    #     pred_real = self.discriminator(real_flat)
+
+    #     loss_fake = F.binary_cross_entropy(pred_fake, torch.zeros_like(pred_fake))
+    #     loss_real = F.binary_cross_entropy(pred_real, torch.ones_like(pred_real))
+
+    #     return loss_fake, loss_real
+
+    def loss(self, target_o: Tensor, pred_o: Tensor, padding_mask: Tensor):
         B, T = padding_mask.size()
         padding_mask = padding_mask.float()
+    
+        loss_o = F.mse_loss(pred_o, target_o, reduction='none')
+        loss_o *= 1 - padding_mask.view(B, T, -1)  # padding mask: 0 keep, 1 pad, so 1 - padding_mask needed
+        loss_o = loss_o.mean() * (B * T) / (1 - padding_mask).sum()
 
-        valid_mask = (obs_mask.bool() & (padding_mask == 0))
-        valid_mask = valid_mask.unsqueeze(-1).expand_as(pred_o)
-        masked_pred = pred_o[valid_mask]
-        masked_target = target_o[valid_mask]
-
-        if masked_pred.numel() > 0:
-            loss_o = F.mse_loss(masked_pred, masked_target, reduction='mean')
-        else:
-            loss_o = torch.tensor(0.0, device=pred_o.device)
-
-        # discriminator loss
-        with torch.no_grad():
-            f_obs_mask = obs_mask.clone()
-            f_obs_mask[:,:self.ctx_size] = 1.0 - f_obs_mask[:,:self.ctx_size]
-            _, slot_out = self(pred_o, f_obs_mask)
-            slot_out_flat = slot_out.reshape(B, -1)
-            pred_disc_fake = self.discriminator(slot_out_flat)
-            loss_adv = F.binary_cross_entropy(pred_disc_fake, torch.ones_like(pred_disc_fake))
-
-        return loss_o + self.adv_weight * loss_adv, pred_disc_fake.mean().item()
-
-    def loss_disc(self, slot_out_fake, slot_out_real):
-        B = slot_out_fake.size(0)
-
-        fake_flat = slot_out_fake.reshape(B, -1).detach()
-        real_flat = slot_out_real.reshape(B, -1).detach()
-
-        pred_fake = self.discriminator(fake_flat)
-        pred_real = self.discriminator(real_flat)
-
-        loss_fake = F.binary_cross_entropy(pred_fake, torch.zeros_like(pred_fake))
-        loss_real = F.binary_cross_entropy(pred_real, torch.ones_like(pred_real))
-
-        return loss_fake + loss_real
+        return loss_o
+    
 
     def ar_mask(self, batch_size: int, length: int, keep_len: float, device: Device):
         mask = torch.ones([batch_size, length], device=device)
@@ -246,7 +258,8 @@ class TrajNet(pl.LightningModule):
         mask = torch.gather(mask, dim=1, index=ids_restore)
         return mask
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
+    # def training_step(self, batch, batch_idx, optimizer_idx):
+    def training_step(self, batch, batch_idx):
         observations, valid_length, padding_mask = batch
         batch_size, _, _ = observations.shape
         ar_mask_ratio = np.random.choice(self.ar_mask_ratios, 1, p=self.ar_mask_ratio_weights)[0]
@@ -286,26 +299,41 @@ class TrajNet(pl.LightningModule):
         else:
             raise NotImplementedError
 
-        # --------- optimizer_idx = 0 → Update generator ---------
-        if optimizer_idx == 0:
-            pred_o, _ = self(observations, obs_mask)
-            loss, _ = self.loss_gen(observations, pred_o, padding_mask, obs_mask)
+        # # --------- optimizer_idx = 0 → Update generator ---------
+        # if optimizer_idx == 0:
+        #     pred_o, _ = self(observations, obs_mask)
+        #     loss, _ = self.loss_gen(observations, pred_o, padding_mask, obs_mask)
 
-            self.log("train/loss_gen", loss, sync_dist=True)
-            return loss
+        #     self.log('train/loss_gen', loss, sync_dist=True)
+        #     return loss
 
-        # --------- optimizer_idx = 1 → Update discriminator ---------
-        elif optimizer_idx == 1:
-            with torch.no_grad():
-                pred_o, _ = self(observations, obs_mask)
-                f_obs_mask = obs_mask.clone()
-                f_obs_mask[:,:self.ctx_size] = 1.0 - f_obs_mask[:,:self.ctx_size]
-                _, slot_out_fake = self(pred_o, f_obs_mask)
-                _, slot_out_real = self(observations, f_obs_mask)
+        # # --------- optimizer_idx = 1 → Update discriminator ---------
+        # elif optimizer_idx == 1:
+        #     with torch.no_grad():
+        #         pred_o, _ = self(observations, obs_mask)
+        #         f_obs_mask = obs_mask.clone()
+        #         f_obs_mask[:,:self.ctx_size] = 0.0
+        #         # f_obs_mask[:,:self.ctx_size] = 1.0 - f_obs_mask[:,:self.ctx_size]
+        #         _, slot_out_fake = self(pred_o, f_obs_mask)
+        #         _, slot_out_real = self(observations, f_obs_mask)
 
-            loss = self.loss_disc(slot_out_fake, slot_out_real)
-            self.log("train/loss_disc", loss, sync_dist=True)
-            return loss
+        #     loss_fake, loss_real = self.loss_disc(slot_out_fake, slot_out_real)
+        #     loss = loss_fake + loss_real
+        #     self.log_dict({'train/loss_disc_fake': loss_fake,
+        #               'train/loss_disc_real': loss_real
+        #               }, 
+        #     sync_dist=True)
+        #     return loss
+
+        pred_o, _ = self(observations, obs_mask)
+        loss = self.loss(observations, pred_o, padding_mask)
+
+        self.log_dict({
+            'train/train_loss': loss,
+            },  
+        sync_dist=True)
+
+        return loss
 
     def validation_step(self, batch, batch_idx):
         observations, valid_length, padding_mask = batch
@@ -348,16 +376,30 @@ class TrajNet(pl.LightningModule):
             raise NotImplementedError
 
         pred_o, _ = self(observations, obs_mask)
-        loss, disc_out = self.loss_gen(observations, pred_o, padding_mask, obs_mask)
+        loss = self.loss(observations, pred_o, padding_mask)
+
 
         self.log_dict({
             'val/val_loss': loss,
-            'val/disc_output_mean': disc_out
-            },
+            },  
         sync_dist=True)
-
+    
     def configure_optimizers(self):
-        opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr * 0.5)
-        return [opt_g, opt_d], []
+        optimizer = torch.optim.Adam(params=self.model.parameters(), lr=self.lr)
+        return {
+            'optimizer': optimizer,
+        }
 
+    #     pred_o, _ = self(observations, obs_mask)
+    #     loss, disc_out = self.loss_gen(observations, pred_o, padding_mask, obs_mask)
+
+    #     self.log_dict({
+    #         'val/val_loss': loss,
+    #         'val/disc_output_mean': disc_out
+    #         },
+    #     sync_dist=True)
+
+    # def configure_optimizers(self):
+    #     opt_g = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+    #     opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr * 0.5)
+    #     return [opt_g, opt_d], []

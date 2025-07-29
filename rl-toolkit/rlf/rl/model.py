@@ -268,6 +268,7 @@ class MLPBase(BaseNet):
             if not (no_last_act and i == len(hidden_sizes) - 2):
                 layers.append(get_activation())
         self.net = nn.Sequential(*layers)
+        self.net.to('cuda')
         self.train()
 
     def forward(self, inputs, hxs, masks):
@@ -293,6 +294,70 @@ class MLPBasic(MLPBase):
     ):
         super().__init__(
             num_inputs, False, [hidden_size] * num_layers, weight_init, get_activation
+        )
+
+
+class MLPBaseMulti(nn.Module):
+    def __init__(
+        self,
+        num_input_s,
+        num_input_m,
+        recurrent,
+        hidden_sizes,
+        weight_init=def_mlp_weight_init,
+        get_activation=lambda: nn.Tanh(),
+        no_last_act=False,
+    ):
+        super().__init__()
+        assert len(hidden_sizes) > 0
+
+        self._hidden_size = hidden_sizes[-1]
+
+        self.input_s_layer = weight_init(nn.Linear(num_input_s, hidden_sizes[0]))
+        # self.input_m_layer = weight_init(nn.Linear(num_input_m, hidden_sizes[0]))  # int(hidden_sizes[0]/4)
+        self.input_m_layer = nn.Sequential(
+            weight_init(nn.Linear(num_input_m, hidden_sizes[0])), 
+            get_activation(), 
+            weight_init(nn.Linear(hidden_sizes[0], int(hidden_sizes[0]/4))),
+            get_activation()
+        )
+
+        in_dim = hidden_sizes[0] + int(hidden_sizes[0]/4)
+        layers = [weight_init(nn.Linear(in_dim, hidden_sizes[0])), get_activation()]
+        # Minus one for the input layer
+        
+        for i in range(len(hidden_sizes) - 1):
+            layers.append(weight_init(nn.Linear(hidden_sizes[i], hidden_sizes[i + 1])))
+            if not (no_last_act and i == len(hidden_sizes) - 2):
+                layers.append(get_activation())
+        self.net = nn.Sequential(*layers)
+        self.net.to('cuda')
+        self.train()
+
+    @property
+    def output_shape(self):
+        return (self._hidden_size,)
+
+    def forward(self, states, memory, hxs, masks):
+        x_s = self.input_s_layer(states)
+        x_m = self.input_m_layer(memory)
+        x = torch.cat([x_s, x_m], dim=-1)
+        hidden_actor = self.net(x)
+
+        return hidden_actor, hxs
+
+class MLPMulti(MLPBaseMulti):
+    def __init__(
+        self,
+        num_input_s,
+        num_input_m,
+        hidden_size,
+        num_layers,
+        weight_init=def_mlp_weight_init,
+        get_activation=lambda: nn.Tanh(),
+    ):
+        super().__init__(
+            num_input_s, num_input_m, False, [hidden_size] * num_layers, weight_init, get_activation
         )
 
 class MLPBasicRNN(MLPBase):

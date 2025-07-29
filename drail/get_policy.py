@@ -13,7 +13,7 @@ from rlf.policies import BasicPolicy, DistActorCritic, DistActorCritic_mk2
 from rlf.policies.actor_critic.dist_actor_q import (DistActorQ, get_sac_actor,
                                                     get_sac_critic)
 from rlf.policies.actor_critic.reg_actor_critic import RegActorCritic
-from rlf.rl.model import MLPBase, MLPBasic, MLPBasicRNN, TwoLayerMlpWithAction
+from rlf.rl.model import MLPBase, MLPBasic, MLPMulti, MLPBasicRNN, TwoLayerMlpWithAction
 from goal_prox.models import GwImgEncoder
 from gcpc.model.policynet import SlotBasicPolicy
 
@@ -49,8 +49,8 @@ def get_ppo_mk2_policy(env_name, args):
     if env_name.startswith("MiniGrid") and args.gw_img:
         return DistActorCritic(get_base_net_fn=lambda i_shape: GwImgEncoder(i_shape))
     return DistActorCritic_mk2(
-        get_actor_fn=lambda _, i_shape: MLPBasic(
-            i_shape[0]*2, hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers
+        get_actor_fn=lambda _, i_shape: MLPMulti(
+            i_shape[0], args.ppo_slot_dim, hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers
         ),
         get_critic_fn=lambda _, i_shape, asp: MLPBasic(
             i_shape[0], hidden_size=args.ppo_hidden_dim, num_layers=args.ppo_layers

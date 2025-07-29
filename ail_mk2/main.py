@@ -73,6 +73,7 @@ def get_setup_dict():
         "drail-un": (DRAIL_UN(), get_ppo_policy),
         "drail": (DRAIL(), get_ppo_policy),
         "drail-mk2": (DRAIL_MK2(), get_ppo_mk2_policy),
+        # "drail-mk2": (DRAIL_MK2(), get_ppo_policy),
         "gcpc": (GCPC(), partial(get_gcpc_policy, is_stoch=False)),
     }
 
@@ -110,6 +111,7 @@ class DrailSettings(RunSettings):
         parser.add_argument("--hidden-dim", type=int, default=256)
         parser.add_argument("--depth", type=int, default=2)
         parser.add_argument("--ppo-hidden-dim", type=int, default=64)
+        parser.add_argument("--ppo-slot-dim", type=int, default=256)
         parser.add_argument("--ppo-layers", type=int, default=2)
 
     def import_add(self):
